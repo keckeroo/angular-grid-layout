@@ -64,6 +64,7 @@ function layoutToRenderItems(config: KtdGridCfg, width: number, height: number):
     const rowHeightInPixels = getRowHeightInPixels(config, height);
     const itemWidthPerColumn = getColumnWidth(config, width);
     const renderItems: KtdDictionary<KtdGridItemRenderData<number>> = {};
+
     for (const item of layout) {
         renderItems[item.id] = {
             id: item.id,
@@ -196,6 +197,16 @@ export class KtdGridComponent implements OnChanges, AfterContentInit, AfterConte
 
     private _compactType: KtdGridCompactType = 'vertical';
 
+    /** Enable swapping of tiles during drag if target tile is same dimension as dragged tile */
+    @Input()
+    get enableSwap() {
+        return this._enableSwap;
+    }
+    set enableSwap(val: boolean) {
+        this._enableSwap = val;
+    }
+    private _enableSwap: boolean = false;
+
     /**
      * Row height as number or as 'fit'.
      * If rowHeight is a number value, it means that each row would have those css pixels in height.
@@ -298,6 +309,7 @@ export class KtdGridComponent implements OnChanges, AfterContentInit, AfterConte
             layout: this.layout,
             preventCollision: this.preventCollision,
             gap: this.gap,
+            enableSwap, this.enableSwap
         };
     }
 
@@ -553,6 +565,7 @@ export class KtdGridComponent implements OnChanges, AfterContentInit, AfterConte
                             cols: this.cols,
                             preventCollision: this.preventCollision,
                             gap: this.gap,
+                            enableSwap: this.enableSwap,
                         }, this.compactType, {
                             pointerDownEvent,
                             pointerDragEvent,
@@ -571,6 +584,7 @@ export class KtdGridComponent implements OnChanges, AfterContentInit, AfterConte
                             layout: newLayout,
                             preventCollision: this.preventCollision,
                             gap: this.gap,
+                            enableSwap: this.enableSwap,
                         }, gridElemClientRect.width, gridElemClientRect.height);
 
                         const newGridItemRenderData = {...this._gridItemsRenderData[gridItem.id]}
@@ -609,6 +623,7 @@ export class KtdGridComponent implements OnChanges, AfterContentInit, AfterConte
                     (error) => observer.error(error),
                     () => {
                         this.ngZone.run(() => {
+
                             // Remove drag classes
                             this.renderer.removeClass(gridItem.elementRef.nativeElement, 'no-transitions');
                             this.renderer.removeClass(gridItem.elementRef.nativeElement, 'ktd-grid-item-dragging');

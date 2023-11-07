@@ -5,6 +5,7 @@ import {
 import { ktdPointerClientX, ktdPointerClientY } from './pointer.utils';
 import { KtdDictionary } from '../../types';
 import { KtdGridItemComponent } from '../grid-item/grid-item.component';
+import { KtdClientRect } from '../utils/client-rect';
 
 /** Tracks items by id. This function is mean to be used in conjunction with the ngFor that renders the 'ktd-grid-items' */
 export function ktdTrackById(index: number, item: {id: string}) {
@@ -53,6 +54,32 @@ function screenWidthToGridWidth(gridScreenWidth: number, cols: number, width: nu
 function screenHeightToGridHeight(gridScreenHeight: number, rowHeight: number, height: number, gap: number): number {
     const gridScreenHeightMinusFirst = gridScreenHeight - rowHeight;
     return Math.round(gridScreenHeightMinusFirst / (rowHeight + gap)) + 1;
+}
+
+/**
+ * Given the grid and grid item configurations, calculate the min/max height and width resize ranges. Used to prevent
+ * visual resize proxy from continuing to grow outside these dimensions.
+ *
+ * @param draggingElemPrevItem the item being resized
+ * @param gridElementRect the grid element (to obtain width)
+ * @param rowHeight specified row height
+ * @param cols configured columns for grid
+ * @param gap configured gap
+ * @returns object with min/max height and width dimensions
+ */
+function getResizeLimits(draggingElemPrevItem: LayoutItem, gridElementRect: KtdClientRect, rowHeight: number, cols: number, gap: number): any {
+    const { width } = gridElementRect;
+    const { minH, maxH, h, minW, maxW, w } = draggingElemPrevItem;
+
+    const widthMinusGaps = width - (gap * (cols - 1));
+    const itemWidth = widthMinusGaps / cols;
+
+    const minWidth = (itemWidth * minW) + (gap * (minW - 1));
+    const maxWidth = (itemWidth * Math.min(maxW, cols)) + (gap * (Math.min(maxW, cols) - 1));
+    const minHeight = (rowHeight * minH) + (gap * (minH - 1));
+    const maxHeight = (rowHeight * maxH) + (gap * (maxH - 1));
+
+    return { minHeight, maxHeight, minWidth, maxWidth };
 }
 
 /** Returns a Dictionary where the key is the id and the value is the change applied to that item. If no changes Dictionary is empty. */
@@ -133,7 +160,8 @@ export function ktdGridItemDragging(gridItem: KtdGridItemComponent, config: KtdG
         true,
         config.preventCollision,
         compactionType,
-        config.cols
+        config.cols,
+        config.enableSwap,
     );
 
     newLayoutItems = compact(newLayoutItems, compactionType, config.cols);
@@ -170,12 +198,20 @@ export function ktdGridItemResizing(gridItem: KtdGridItemComponent, config: KtdG
     const resizeElemOffsetY = dragElemClientRect.height - (clientStartY - dragElemClientRect.top);
 
     const draggingElemPrevItem = config.layout.find(item => item.id === gridItemId)!;
-    const width = clientX + resizeElemOffsetX - (dragElemClientRect.left + scrollDifference.left);
-    const height = clientY + resizeElemOffsetY - (dragElemClientRect.top + scrollDifference.top);
+
+    let width = clientX + resizeElemOffsetX - (dragElemClientRect.left + scrollDifference.left);
+    let height = clientY + resizeElemOffsetY - (dragElemClientRect.top + scrollDifference.top);
 
     const rowHeightInPixels = config.rowHeight === 'fit'
         ? ktdGetGridItemRowHeight(config.layout, config.height ?? gridElemClientRect.height, config.gap)
         : config.rowHeight;
+
+    // Retrieve resize limits for grid item
+    const { minHeight, maxHeight, minWidth, maxWidth } = getResizeLimits(draggingElemPrevItem, gridElemClientRect, rowHeightInPixels, config.cols, config.gap);
+
+    // Restrict height and width of the drag to the size range of the target item
+    height = limitNumberWithinRange(height, minHeight, maxHeight);
+    width  = limitNumberWithinRange(width, minWidth, maxWidth);
 
     // Get layout item grid position
     const layoutItem: KtdGridLayoutItem = {
@@ -273,3 +309,4 @@ export function ktdGridItemLayoutItemAreEqual(item1: KtdGridLayoutItem, item2: K
         && item1.w === item2.w
         && item1.h === item2.h
 }
+

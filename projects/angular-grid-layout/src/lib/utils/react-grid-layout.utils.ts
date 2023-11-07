@@ -393,6 +393,7 @@ export function moveElement(
     preventCollision: boolean | null | undefined,
     compactType: CompactType,
     cols: number,
+    enableSwap: boolean,
 ): Layout {
     // If this is static and not explicitly enabled as draggable,
     // no move is possible, so we can short-circuit this immediately.
@@ -470,6 +471,7 @@ export function moveElement(
                 isUserAction,
                 compactType,
                 cols,
+                enableSwap
             );
         } else {
             layout = moveElementAwayFromCollision(
@@ -479,6 +481,7 @@ export function moveElement(
                 isUserAction,
                 compactType,
                 cols,
+                enableSwap
             );
         }
     }
@@ -501,6 +504,7 @@ export function moveElementAwayFromCollision(
     isUserAction: boolean | null | undefined,
     compactType: CompactType,
     cols: number,
+    enableSwap: boolean,
 ): Layout {
     const compactH = compactType === 'horizontal';
     // Compact vertically if not set to horizontal
@@ -543,6 +547,7 @@ export function moveElementAwayFromCollision(
                 preventCollision,
                 compactType,
                 cols,
+                enableSwap,
             );
         }
     }
@@ -550,12 +555,13 @@ export function moveElementAwayFromCollision(
     return moveElement(
         layout,
         itemToMove,
-        compactH ? itemToMove.x + 1 : undefined,
-        compactV ? itemToMove.y + 1 : undefined,
+        enableSwap ? oldX : compactH ? itemToMove.x + 1 : undefined,
+        enableSwap ? oldY : compactV ? itemToMove.y + 1 : undefined,
         isUserAction,
         preventCollision,
         compactType,
         cols,
+        enableSwap,
     );
 }
 
